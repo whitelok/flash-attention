@@ -4,4 +4,6 @@
 
 #include "flash_fwd_launch_template.h"
 
+#if defined(__CUDA_ARCH__) &&  __CUDA_ARCH__ >= 800
 template void run_mha_fwd_splitkv_dispatch<cutlass::bfloat16_t, 192>(Flash_fwd_params &params, cudaStream_t stream);
+#endif

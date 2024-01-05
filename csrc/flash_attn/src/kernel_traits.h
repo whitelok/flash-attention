@@ -10,6 +10,8 @@
 #include "cutlass/layout/layout.h"
 #include <cutlass/numeric_types.h>
 
+#include "fma.h"
+
 using namespace cute;
 
 template<int kHeadDim_, int kBlockM_, int kBlockN_, int kNWarps_, typename elem_type=cutlass::half_t>
@@ -32,6 +34,13 @@ struct Flash_kernel_traits {
         MMA_Atom<SM80_16x8x16_F32F16F16F32_TN>,
         MMA_Atom<SM80_16x8x16_F32BF16BF16F32_TN>
     >;
+    using ValLayoutMNK = Layout<Shape<_1, _2, _1>>;
+#elif defined(__CUDA_ARCH__) &&  __CUDA_ARCH__ == 700
+    // using MMA_Atom_Arch = MMA_Atom<SM80_16x8x16_F32BF16BF16F32_TN>;
+    // using ValLayoutMNK = Layout<Shape<_1, _2, _2>>;
+    // using MMA_Atom_Arch = MMA_Atom<SM70_8x8x4_F32F16F16F32_TN>;
+    // using ValLayoutMNK = Layout<Shape<_2, _2, _4>>;
+    using MMA_Atom_Arch = MMA_Atom<SM70_16x8x16_F32F16F16F32_TN>;
     using ValLayoutMNK = Layout<Shape<_1, _2, _1>>;
 #else
     using MMA_Atom_Arch = MMA_Atom<SM75_16x8x8_F32F16F16F32_TN>;
@@ -218,17 +227,17 @@ struct Flash_bwd_kernel_traits : public Base {
     using TiledMmaSdP = TiledMMA<
         typename Base::MMA_Atom_Arch,
         Layout<Shape<Int<AtomLayoutMSdP>, Int<kNWarps / AtomLayoutMSdP>, _1>>,
-        typename Base::ValLayoutMNK>; // 1x2x1 or 1x2x2 value group for 16x16x16 MMA and LDSM
+        typename Base::ValLayoutMNK>; // 1x2x1 or 1x2x2 or 2x2x4 value group for 16x16x16 MMA and LDSM
 
     using TiledMmadKV = TiledMMA<
         typename Base::MMA_Atom_Arch,
         Layout<Shape<Int<AtomLayoutNdKV>, Int<kNWarps / AtomLayoutNdKV>, _1>>,
-        typename Base::ValLayoutMNK>; // 1x2x1 or 1x2x2 value group for 16x16x16 MMA and LDSM
+        typename Base::ValLayoutMNK>; // 1x2x1 or 1x2x2 or 2x2x4 value group for 16x16x16 MMA and LDSM
 
     using TiledMmadQ = TiledMMA<
         typename Base::MMA_Atom_Arch,
-        Layout<Shape<Int<AtomLayoutMdQ>, Int<kNWarps / AtomLayoutMdQ>, _1>>,  // 2x4x1 or 4x2x1 thread group
-        typename Base::ValLayoutMNK>; // 1x2x1 or 1x2x2 value group for 16x16x16 MMA and LDSM
+        Layout<Shape<Int<AtomLayoutMdQ>, Int<kNWarps / AtomLayoutMdQ>, _1>>,  // 2x4x1 or 4x2x1 or thread group
+        typename Base::ValLayoutMNK>; // 1x2x1 or 1x2x2 or 2x2x4 value group for 16x16x16 MMA and LDSM
 
     using SmemLayoutAtomQdO = decltype(
         composition(Swizzle<kSwizzle, 3, 3>{},

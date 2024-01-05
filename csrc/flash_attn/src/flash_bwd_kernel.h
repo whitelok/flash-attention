@@ -1018,7 +1018,6 @@ inline __device__ void compute_dq_dk_dv_1colblock(const Params &params, const in
             if (!Seq_parallel) {
                 cute::copy(gmem_tiled_copy_dQaccum, acc_dq_reshaped, tdQgdQaccum);
             } else {
-                // if (cute::thread0()) { print(acc_dq.layout()); printf("\n"); print(acc_dq_reshaped.layout()); printf("\n"); print(tdQgdQaccum.layout()); printf("\n"); }
                 CUTE_STATIC_ASSERT_V(size(acc_dq) == size(tdQgdQaccum));
                 #pragma unroll
                 for (int i = 0; i < size(acc_dq); ++i) { atomicAdd(&tdQgdQaccum(i), acc_dq(i)); }

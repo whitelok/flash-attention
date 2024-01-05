@@ -44,7 +44,8 @@ FORCE_BUILD = os.getenv("FLASH_ATTENTION_FORCE_BUILD", "FALSE") == "TRUE"
 SKIP_CUDA_BUILD = os.getenv("FLASH_ATTENTION_SKIP_CUDA_BUILD", "FALSE") == "TRUE"
 # For CI, we want the option to build with C++11 ABI since the nvcr images use C++11 ABI
 FORCE_CXX11_ABI = os.getenv("FLASH_ATTENTION_FORCE_CXX11_ABI", "FALSE") == "TRUE"
-
+# cause sm70 compile time is very long, we default disable it
+SUPPORT_VOLTA_GPU = os.getenv("FLASH_ATTENTION_FORCE_SUPPORT_SM70", "TRUE") == "TRUE"
 
 def get_platform():
     """
@@ -115,14 +116,18 @@ if not SKIP_CUDA_BUILD:
                 "FlashAttention is only supported on CUDA 11.6 and above.  "
                 "Note: make sure nvcc has a supported version by running nvcc -V."
             )
+
+    if SUPPORT_VOLTA_GPU:
+        # supported volta: v100
+        cc_flag.append("-gencode")
+        cc_flag.append("arch=compute_70,code=sm_70")
+
     # cc_flag.append("-gencode")
-    # cc_flag.append("arch=compute_75,code=sm_75")
-    cc_flag.append("-gencode")
-    cc_flag.append("arch=compute_80,code=sm_80")
-    if CUDA_HOME is not None:
-        if bare_metal_version >= Version("11.8"):
-            cc_flag.append("-gencode")
-            cc_flag.append("arch=compute_90,code=sm_90")
+    # cc_flag.append("arch=compute_80,code=sm_80")
+    # if CUDA_HOME is not None:
+    #     if bare_metal_version >= Version("11.8"):
+    #         cc_flag.append("-gencode")
+    #         cc_flag.append("arch=compute_90,code=sm_90")
 
     # HACK: The compiler flag -D_GLIBCXX_USE_CXX11_ABI is set to be the same as
     # torch._C._GLIBCXX_USE_CXX11_ABI
