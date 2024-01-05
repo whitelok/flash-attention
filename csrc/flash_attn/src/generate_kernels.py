@@ -37,6 +37,33 @@ void run_mha_bwd_<{DTYPE}, {HEAD_DIM}>(Flash_bwd_params &params, cudaStream_t st
 }}
 """
 
+KERNEL_IMPL_TEMPLATE_FWD_WITHOUT_BF16 = """#include "flash_fwd_launch_template.h"
+
+#if defined(__CUDA_ARCH__) &&  __CUDA_ARCH__ >= 800
+template<>
+void run_mha_fwd_<{DTYPE}, {HEAD_DIM}>(Flash_fwd_params &params, cudaStream_t stream) {{
+    run_mha_fwd_hdim{HEAD_DIM}<{DTYPE}>(params, stream);
+}}
+#endif
+"""
+
+KERNEL_IMPL_TEMPLATE_FWD_SPLIT_WITHOUT_BF16 = """#include "flash_fwd_launch_template.h"
+
+#if defined(__CUDA_ARCH__) &&  __CUDA_ARCH__ >= 800
+template void run_mha_fwd_splitkv_dispatch<{DTYPE}, {HEAD_DIM}>(Flash_fwd_params &params, cudaStream_t stream);
+#endif
+"""
+
+KERNEL_IMPL_TEMPLATE_BWD_WITHOUT_BF16 = """#include "flash_bwd_launch_template.h"
+
+#if defined(__CUDA_ARCH__) &&  __CUDA_ARCH__ >= 800
+template<>
+void run_mha_bwd_<{DTYPE}, {HEAD_DIM}>(Flash_bwd_params &params, cudaStream_t stream, const bool configure) {{
+    run_mha_bwd_hdim{HEAD_DIM}<{DTYPE}>(params, stream, configure);
+}}
+#endif
+"""
+
 
 @dataclass
 class Kernel:
@@ -48,17 +75,32 @@ class Kernel:
     @property
     def template(self) -> str:
         if self.direction == "fwd":
-            return KERNEL_IMPL_TEMPLATE_FWD.format(
-                DTYPE=DTYPE_MAP[self.dtype], HEAD_DIM=self.head_dim
-            )
+            if self.dtype == "bf16":
+                return KERNEL_IMPL_TEMPLATE_FWD_WITHOUT_BF16.format(
+                    DTYPE=DTYPE_MAP[self.dtype], HEAD_DIM=self.head_dim
+                )
+            else:
+                return KERNEL_IMPL_TEMPLATE_FWD.format(
+                    DTYPE=DTYPE_MAP[self.dtype], HEAD_DIM=self.head_dim
+                )
         elif self.direction == "bwd":
-            return KERNEL_IMPL_TEMPLATE_BWD.format(
-                DTYPE=DTYPE_MAP[self.dtype], HEAD_DIM=self.head_dim
-            )
+            if self.dtype == "bf16":
+                return KERNEL_IMPL_TEMPLATE_BWD_WITHOUT_BF16.format(
+                    DTYPE=DTYPE_MAP[self.dtype], HEAD_DIM=self.head_dim
+                )                
+            else:
+                return KERNEL_IMPL_TEMPLATE_BWD.format(
+                    DTYPE=DTYPE_MAP[self.dtype], HEAD_DIM=self.head_dim
+                )
         else:
-            return KERNEL_IMPL_TEMPLATE_FWD_SPLIT.format(
-                DTYPE=DTYPE_MAP[self.dtype], HEAD_DIM=self.head_dim
-            )
+            if self.dtype == "bf16":
+                return KERNEL_IMPL_TEMPLATE_FWD_SPLIT_WITHOUT_BF16.format(
+                    DTYPE=DTYPE_MAP[self.dtype], HEAD_DIM=self.head_dim
+                )
+            else:
+                return KERNEL_IMPL_TEMPLATE_FWD_SPLIT.format(
+                    DTYPE=DTYPE_MAP[self.dtype], HEAD_DIM=self.head_dim
+                )
 
     @property
     def filename(self) -> str:

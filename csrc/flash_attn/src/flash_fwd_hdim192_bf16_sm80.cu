@@ -4,7 +4,9 @@
 
 #include "flash_fwd_launch_template.h"
 
+#if defined(__CUDA_ARCH__) &&  __CUDA_ARCH__ >= 800
 template<>
 void run_mha_fwd_<cutlass::bfloat16_t, 192>(Flash_fwd_params &params, cudaStream_t stream) {
     run_mha_fwd_hdim192<cutlass::bfloat16_t>(params, stream);
 }
+#endif

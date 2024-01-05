@@ -424,7 +424,7 @@ inline __device__ float4 hmma_fp32(const uint2& a, uint32_t b)
 template<int N>
 inline __device__ float qk_hmma_dot_(const uint32_t (&q)[N], const uint32_t (&k)[N])
 {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 750
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 #ifdef MMHA_USE_FP32_ACUM_FOR_FMA
     using K_vec_acum = typename K_vec_acum_fp32_<uint32_t>::Type;
 #else

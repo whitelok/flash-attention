@@ -10,6 +10,8 @@
 #include "cutlass/layout/layout.h"
 #include <cutlass/numeric_types.h>
 
+#include "fma.h"
+
 using namespace cute;
 
 template<int kHeadDim_, int kBlockM_, int kBlockN_, int kNWarps_, typename elem_type=cutlass::half_t>
@@ -32,6 +34,13 @@ struct Flash_kernel_traits_sm90 {
         MMA_Atom<SM80_16x8x16_F32F16F16F32_TN>,
         MMA_Atom<SM80_16x8x16_F32BF16BF16F32_TN>
     >;
+    using ValLayoutMNK = Layout<Shape<_1, _2, _1>>;
+#elif defined(__CUDA_ARCH__) &&  __CUDA_ARCH__ == 700
+    // using MMA_Atom_Arch = MMA_Atom<SM80_16x8x16_F32BF16BF16F32_TN>;
+    // using ValLayoutMNK = Layout<Shape<_1, _2, _2>>;
+    // using MMA_Atom_Arch = MMA_Atom<SM70_8x8x4_F32F16F16F32_TN>;
+    // using ValLayoutMNK = Layout<Shape<_2, _2, _4>>;
+    using MMA_Atom_Arch = MMA_Atom<SM70_16x8x16_F32F16F16F32_TN>;
     using ValLayoutMNK = Layout<Shape<_1, _2, _1>>;
 #else
     using MMA_Atom_Arch = MMA_Atom<SM75_16x8x8_F32F16F16F32_TN>;
